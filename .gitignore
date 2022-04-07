@@ -1,0 +1,3 @@
+venv
+resources/datasets/.*
+__pycache__
