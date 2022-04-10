@@ -3,7 +3,7 @@ import sys
 
 sys.path.append('.')
 
-from matplotlib import pyplot as plt, style
+from matplotlib import pyplot as plt
 import pandas as pd
 
 def plot_courses(data, numerical_columns, course1, course2):
