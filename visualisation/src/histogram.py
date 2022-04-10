@@ -7,7 +7,7 @@ import pandas as pd
 
 def main():
 	if len(sys.argv) != 2:
-		print(f'Usage: {sys.argv[0]} <csv_file>')
+		print(f'Usage: {sys.argv[0]} <csv_file>', file=sys.stderr)
 		return
 	data = pd.read_csv(sys.argv[1])
 	numerical_columns = data.select_dtypes("number").columns
