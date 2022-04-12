@@ -17,6 +17,8 @@ def plot_courses(data, numerical_columns, course1, course2):
 	plt.xlabel(course1)
 	plt.ylabel(course2)
 	plt.title(f'{course1} vs {course2}')
+	fig = plt.gcf()
+	fig.set_size_inches(10, 10)
 
 def plot_all(data, numerical_columns):
 	i = 0
@@ -33,19 +35,26 @@ def plot_all(data, numerical_columns):
 	plt.xlabel('Index')
 	plt.ylabel('Mean of differences')
 	plt.title('Difference between courses')
+	fig = plt.gcf()
+	fig.set_size_inches(20, 20)
 
 def main():
 	if len(sys.argv) != 4 and len(sys.argv) != 2:
 		print(f'Usage: {sys.argv[0]} <csv_file> [course1 <course2>]', file=sys.stderr)
 		return
-	data = pd.read_csv(sys.argv[1])
+	data = pd.DataFrame()
+	try:
+		data = pd.read_csv(sys.argv[1])
+	except:
+		print('Invalid dataset file', file=sys.stderr)
+		return
 	numerical_columns = data.select_dtypes("number").columns
 	data[numerical_columns] = (data[numerical_columns] - data[numerical_columns].min()) / (data[numerical_columns].max() - data[numerical_columns].min())
 	if len(sys.argv) == 4:
 		plot_courses(data, numerical_columns, sys.argv[2], sys.argv[3])
 	else:
 		plot_all(data, numerical_columns)
-	plt.show()
-
+	fig = plt.gcf()
+	fig.savefig('scatter_plot.png')
 if __name__ == '__main__':
 	main()

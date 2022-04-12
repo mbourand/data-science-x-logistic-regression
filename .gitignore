@@ -1,3 +1,5 @@
 venv
 resources/datasets/.*
+resources/*.csv
 __pycache__
+*.png
