@@ -3,39 +3,54 @@ import numpy as np
 import sys
 
 def sigmoid(x):
-	return 1 / (1 + np.exp(-x))
+	sigmoid = np.zeros(x.shape)
+	for i in range(len(x)):
+		sigmoid[i] = 1 / (1 + np.exp(-x[i]))
+	return sigmoid
 
 def predict(data, weights):
-	return sigmoid(np.dot(data, weights))
+	return sigmoid(weights.T @ data.T)
 
-def house_result(house):
-	return {'Gryffindor': house == 'Gryffindor', 'Slytherin': house == 'Slytherin', 'Ravenclaw': house == 'Ravenclaw', 'Hufflepuff': house == 'Hufflepuff'}
+def house_result(data):
+	res = np.zeros((data.shape[0], 4))
+	for index in range(data.shape[0]):
+		res[index][data.iloc[index]] = 1
+	return res
 
 def choose_house(predictions):
-	return max(predictions, key=predictions.get)
+	res = np.zeros(predictions.shape[0])
+	for i in range(len(predictions)):
+		cur_max = -1
+		cur_max_idx = 0
+		for j in range(len(predictions[i])):
+			if cur_max <= predictions[i][j]:
+				cur_max = predictions[i][j]
+				cur_max_idx = j
+			res[i] = cur_max_idx
+	return res
 
-def train(data, numerical_columns, iterations=100, learning_rate=0.1):
-	weights = {
-		'Gryffindor': np.random.rand(numerical_columns.shape[0]),
-		'Slytherin': np.random.rand(numerical_columns.shape[0]),
-		'Ravenclaw': np.random.rand(numerical_columns.shape[0]),
-		'Hufflepuff': np.random.rand(numerical_columns.shape[0])
-	}
 
+def winrate(data, numerical_columns, weights):
+	ok = 0
+	predictions = choose_house(predict(data[numerical_columns].to_numpy(copy=True), weights).T)
+	for index in range(data.shape[0]):
+		if data['Hogwarts House'].iloc[index] == predictions[index]:
+			ok += 1
+	print(f'Prediction rate: {ok / data.shape[0] * 100}%')
+
+def train(data, numerical_columns, iterations=30000, learning_rate=0.005):
+	weights = np.zeros((numerical_columns.shape[0], 4))
+	for i in range(len(weights)):
+		for j in range(len(weights[i])):
+			weights[i][j] = np.random.uniform(-1, 1)
+
+	real = house_result(data['Hogwarts House'])
 	for i in range(iterations):
-		for index, row in data.iterrows():
-			predictions = {
-				'Gryffindor': predict(row[numerical_columns], weights['Gryffindor']),
-				'Slytherin': predict(row[numerical_columns], weights['Slytherin']),
-				'Ravenclaw': predict(row[numerical_columns], weights['Ravenclaw']),
-				'Hufflepuff': predict(row[numerical_columns], weights['Hufflepuff'])
-			}
-			y = house_result(row['Hogwarts House'])
-
-			for house in predictions:
-				for j in range(len(weights[house])):
-					weights[house][j] += -learning_rate * (predictions[house] - y[house]) * row[numerical_columns[j]]
-		print(i)
+		predictions = predict(data[numerical_columns].to_numpy(copy=True), weights)
+		gradient = ((predictions - real.T) @ data[numerical_columns].to_numpy(copy=True)) / data.shape[0]
+		weights += -learning_rate * gradient.T
+		if i % 100 == 0:
+			print(f'Iteration {i}/{iterations}')
 	return weights
 
 def main():
@@ -43,30 +58,16 @@ def main():
 		print(f'Usage: {sys.argv[0]} <csv_file>]', file=sys.stderr)
 		return
 	data = pd.read_csv(sys.argv[1])
-	data.dropna(inplace=True)
-	numerical_columns = data[['Defense Against the Dark Arts', 'Ancient Runes', 'Herbology' ]].columns
-
+	numerical_columns = data[['Defense Against the Dark Arts', 'Ancient Runes', 'Charms', 'Transfiguration']].columns
+	data.dropna(inplace=True, subset=numerical_columns)
 	data[numerical_columns] = (data[numerical_columns] - data[numerical_columns].min()) / (data[numerical_columns].max() - data[numerical_columns].min())
+	data['Hogwarts House'].replace({ 'Gryffindor': 0, 'Slytherin': 1, 'Ravenclaw': 2, 'Hufflepuff': 3 }, inplace=True)
+	test_data = data.tail(n=int(data.shape[0] * 0.2))
+	data = data.head(n=data.shape[0] - test_data.shape[0])
+
 	weights = train(data, numerical_columns)
-	ok = 0
-	for index, row in data.iterrows():
-		predictions = {
-			'Gryffindor': predict(row[numerical_columns], weights['Gryffindor']),
-			'Slytherin': predict(row[numerical_columns], weights['Slytherin']),
-			'Ravenclaw': predict(row[numerical_columns], weights['Ravenclaw']),
-			'Hufflepuff': predict(row[numerical_columns], weights['Hufflepuff'])
-		}
-		if row['Hogwarts House'] == choose_house(predictions):
-			ok += 1
-	print(f'Prediction rate: {ok / data.shape[0] * 100}%')
-	with open('resources/weights.csv', 'w+') as f:
-		for house in weights:
-			f.write(f'{house},')
-		f.write('\n')
-		for i in range(len(weights['Gryffindor'])):
-			for house in weights:
-				f.write(f'{weights[house][i]},')
-			f.write('\n')
+	winrate(test_data, numerical_columns, weights)
+	pd.DataFrame({'Gryffindor': weights.T[0], 'Slytherin': weights.T[1], 'Ravenclaw': weights.T[2], 'Hufflepuff': weights.T[3]}).to_csv('resources/weights.csv', index=False)
 
 if __name__ == '__main__':
 	main()
