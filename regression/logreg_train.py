@@ -62,11 +62,9 @@ def main():
 	data.dropna(inplace=True, subset=numerical_columns)
 	data[numerical_columns] = (data[numerical_columns] - data[numerical_columns].min()) / (data[numerical_columns].max() - data[numerical_columns].min())
 	data['Hogwarts House'].replace({ 'Gryffindor': 0, 'Slytherin': 1, 'Ravenclaw': 2, 'Hufflepuff': 3 }, inplace=True)
-	test_data = data.tail(n=int(data.shape[0] * 0.2))
-	data = data.head(n=data.shape[0] - test_data.shape[0])
 
 	weights = train(data, numerical_columns)
-	winrate(test_data, numerical_columns, weights)
+	winrate(data, numerical_columns, weights)
 	pd.DataFrame({'Gryffindor': weights.T[0], 'Slytherin': weights.T[1], 'Ravenclaw': weights.T[2], 'Hufflepuff': weights.T[3]}).to_csv('resources/weights.csv', index=False)
 
 if __name__ == '__main__':
